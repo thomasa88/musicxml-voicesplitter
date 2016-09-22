@@ -5,7 +5,35 @@ import os.path
 import sys
 import xml.etree.ElementTree as ET
 
+step_rank = "CDEFGAB"
+
+def note_rank(note):
+    pitch = note.find('pitch')
+    octave = int(pitch.find('octave').text) * 7
+    step = step_rank.index(pitch.find('step').text)
+    alter = pitch.find('alter')
+    if alter is None:
+        alter = 0
+    else:
+        alter = int(alter.text) * 0.5
+    return octave + step + alter
+
+# def note_cmp(lhs, rhs):
+#     l_rank = get_octave_step(lhs)
+#     r_rank = get_octave_step(rhs)
+#     if l_rank < r_rank:
+#         return -1
+#     elif l_rank > r_rank:
+#         return 1
+#     else:
+#         return 0
+
+#b1_prev_rank = 99999.0
+#b2_prev_rank = 0.0
+
+
 def one_voice(part, keep):
+    prev_highest_voice = 1    
     measures = part.getchildren()
     for measure in measures:
         remove_voice_tags = False
@@ -24,23 +52,38 @@ def one_voice(part, keep):
                 if len(found_voices) > 1:
                     # At least two voices in measure
                     remove_voice_tags = True
-                    break
+                    #Maybe chord and voice is combined, so don't break
 #            for c in note:
 #                print(
             chord = note.find('chord')
             if chord is not None:
                 remove_chord_tags = True
-                if keep == 1:
-                    measure.remove(note)
-                elif keep == 2:
-                    measure.remove(prev_note)
-                    note.remove(chord)
+
+                prev_note_rank = note_rank(prev_note)
+                current_note_rank = note_rank(note)
+
+                if current_note_rank > prev_note_rank:
+                    if keep == prev_highest_voice:
+                        measure.remove(prev_note)
+                    else:
+                        measure.remove(note)
+                else:
+                    if keep == prev_highest_voice:
+                        measure.remove(note)
+                    else:
+                        measure.remove(prev_note)
+                note.remove(chord)
             prev_note = note
                     
         if remove_voice_tags:
             # strip one voice
             to_remove = measure.findall("note[voice='%d']" % (3-keep))
+            to_keep = measure.findall("note[voice='%d']" % keep)
             #print("to_remove:", to_remove)
+            if note_rank(to_keep[-1]) > note_rank(to_remove[-1]):
+                prev_highest_voice = keep
+            else:
+                prev_highest_voice = 3 - keep
             for elem in to_remove:
                 measure.remove(elem)
 
