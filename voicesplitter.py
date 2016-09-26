@@ -98,6 +98,43 @@ def one_voice(part, keep):
             print("REMOVE_CHORD_TAGS")
         assert not (remove_voice_tags and remove_chord_tags), "Remove algorithm too simple"
 
+def musescore_compat(root):
+    # Ensure <extend> comes after <text>
+    lyrics = root.findall("./part/measure/note/lyric")
+    #    text = lyrics.find('text')
+    for lyric in lyrics:
+        extend = lyric.find('extend')
+        if extend is not None:
+            lyric.remove(extend)
+            lyric.append(extend)
+
+    # Ensure <lyric> comes after <notations>
+    notes = root.findall("./part/measure/note")
+    for note in notes:
+        lyrics = note.findall('lyric') # Yes, there can be multiple (verses)
+        for lyric in lyrics:
+            note.remove(lyric)
+            note.append(lyric)
+
+    # <direction> does not have a print-object attribute, according to 3.0 XSD
+    directions_w_po = root.findall("./part/measure/direction[@print-object]")
+    for direction in directions_w_po:
+        del direction.attrib['print-object']
+
+    # <direction> does not have a color attribute, according to 3.0 XSD
+    directions_w_po = root.findall("./part/measure/direction[@color]")
+    for direction in directions_w_po:
+        del direction.attrib['color']
+
+        
+    # Ensure <chromatic> comes after <diatonic>
+    transposes = root.findall("./part/measure/attributes/transpose")
+    for transpose in transposes:
+        chromatic = transpose.find('chromatic')
+        if chromatic is not None:
+            transpose.remove(chromatic)
+            transpose.append(chromatic)
+
 
 def main():
     if len(sys.argv) != 2:
@@ -109,6 +146,9 @@ def main():
     print(root.tag)
     for c in root:
         print(c.tag, c.attrib)
+
+    musescore_compat(root)
+        
     #    partnames = root.findall("./part-list/score-part/part-name")
     #    for partname in partnames:
     #        print(partname.text)
@@ -131,6 +171,10 @@ def main():
     b2_info = copy.deepcopy(basepart_info)
     b1_info.attrib['id'] = 'PB1' # Improve!
     b2_info.attrib['id'] = 'PB2' # Improve!
+    b1_info.find('score-instrument').attrib['id'] += '_PB1'
+    b2_info.find('score-instrument').attrib['id'] += '_PB2'
+    b1_info.find('midi-instrument').attrib['id'] += '_PB1'
+    b2_info.find('midi-instrument').attrib['id'] += '_PB2'
     partlist.append(b1_info)
     partlist.append(b2_info)
 
