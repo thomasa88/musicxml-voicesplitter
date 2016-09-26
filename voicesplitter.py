@@ -9,6 +9,8 @@ step_rank = "CDEFGAB"
 
 def note_rank(note):
     pitch = note.find('pitch')
+    if pitch is None:
+        return None
     octave = int(pitch.find('octave').text) * 7
     step = step_rank.index(pitch.find('step').text)
     alter = pitch.find('alter')
@@ -80,10 +82,13 @@ def one_voice(part, keep):
             to_remove = measure.findall("note[voice='%d']" % (3-keep))
             to_keep = measure.findall("note[voice='%d']" % keep)
             #print("to_remove:", to_remove)
-            if note_rank(to_keep[-1]) > note_rank(to_remove[-1]):
-                prev_highest_voice = keep
-            else:
-                prev_highest_voice = 3 - keep
+            to_keep_rank = note_rank(to_keep[-1])
+            to_remove_rank = note_rank(to_remove[-1])
+            if to_keep_rank is not None and to_remove_rank is not None:
+                if to_keep_rank > to_remove_rank:
+                    prev_highest_voice = keep
+                else:
+                    prev_highest_voice = 3 - keep
             for elem in to_remove:
                 measure.remove(elem)
 
